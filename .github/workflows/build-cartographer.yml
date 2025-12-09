@@ -262,8 +262,6 @@ jobs:
           sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
           # Patch to not require SuiteSparse
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
-          # Patch to use Protobuf CONFIG mode
-          sed -i 's/find_package(Protobuf REQUIRED)/find_package(Protobuf REQUIRED CONFIG)/g' CMakeLists.txt
           # Patch to disable Lua requirement (not needed for basic 2D SLAM)
           sed -i 's/find_package(LuaGoogle REQUIRED)/#find_package(LuaGoogle REQUIRED)/g' CMakeLists.txt
           mkdir -p build && cd build
@@ -277,6 +275,9 @@ jobs:
             -DCMAKE_CXX_STANDARD=17 \
             -Dabsl_DIR=$HOME/deps/abseil/lib/cmake/absl \
             -DProtobuf_DIR=$HOME/deps/protobuf/lib/cmake/protobuf \
+            -DProtobuf_INCLUDE_DIR=$HOME/deps/protobuf/include \
+            -DProtobuf_LIBRARY=$HOME/deps/protobuf/lib/libprotobuf.a \
+            -DProtobuf_PROTOC_EXECUTABLE=$HOME/deps/protobuf-host/bin/protoc \
             -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
             -DCeres_DIR=$HOME/deps/ceres/lib/cmake/Ceres \
             -DBOOST_ROOT=$HOME/deps/boost \
