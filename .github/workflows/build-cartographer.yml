@@ -11,18 +11,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Cache built dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          abseil-cpp/build/install
-          protobuf/build/install
-          eigen/build/install
-          ceres-solver/build/install
-        key: android-deps-${{ runner.os }}-${{ hashFiles('.github/workflows/build-cartographer.yml') }}
-        restore-keys: |
-          android-deps-${{ runner.os }}-
-
     - name: Install Android NDK
       run: |
         wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
@@ -35,30 +23,38 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake git wget unzip
 
+    # Cache with fixed key
+    - name: Cache dependencies
+      id: cache-deps
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/deps
+        key: android-deps-v2-${{ runner.os }}
+        restore-keys: |
+          android-deps-v2-
+
     - name: Download Cartographer
       run: |
         git clone https://github.com/cartographer-project/cartographer.git
-        cd cartographer
 
     - name: Build Abseil
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
-        if [ ! -d "abseil-cpp/build/install" ]; then
-          git clone https://github.com/abseil/abseil-cpp.git
-          cd abseil-cpp
-          mkdir build && cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                   -DANDROID_ABI=arm64-v8a \
-                   -DANDROID_PLATFORM=android-21 \
-                   -DCMAKE_BUILD_TYPE=Release \
-                   -DCMAKE_CXX_STANDARD=17 \
-                   -DCMAKE_INSTALL_PREFIX=$PWD/install
-          make -j$(nproc)
-          make install
-        else
-          echo "Abseil already built, skipping..."
-        fi
+        git clone https://github.com/abseil/abseil-cpp.git
+        cd abseil-cpp
+        mkdir build && cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                 -DANDROID_ABI=arm64-v8a \
+                 -DANDROID_PLATFORM=android-21 \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_CXX_STANDARD=17 \
+                 -DCMAKE_INSTALL_PREFIX=$HOME/deps/abseil
+        make -j$(nproc)
+        make install
 
     - name: Build Protobuf
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/protocolbuffers/protobuf.git
         cd protobuf
@@ -70,11 +66,12 @@ jobs:
                        -Dprotobuf_BUILD_TESTS=OFF \
                        -DCMAKE_BUILD_TYPE=Release \
                        -DCMAKE_CXX_STANDARD=17 \
-                       -DCMAKE_INSTALL_PREFIX=$PWD/install
+                       -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf
         make -j$(nproc)
         make install
 
     - name: Build Eigen
+      if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
         git clone https://gitlab.com/libeigen/eigen.git
         cd eigen
@@ -83,25 +80,25 @@ jobs:
                  -DANDROID_ABI=arm64-v8a \
                  -DANDROID_PLATFORM=android-21 \
                  -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_INSTALL_PREFIX=$PWD/install
+                 -DCMAKE_INSTALL_PREFIX=$HOME/deps/eigen
         make install
-
-    - name: Build Ceres Solver
-      run: |
-        echo "Skipping Ceres Solver - will use Cartographer without optimization"
 
     - name: Build Cartographer
       run: |
         cd cartographer
+        # Patch CMakeLists.txt to disable testing completely
+        sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
         mkdir build && cd build
         cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
                  -DANDROID_ABI=arm64-v8a \
                  -DANDROID_PLATFORM=android-21 \
                  -DBUILD_GRPC=OFF \
                  -DBUILD_TESTING=OFF \
-                 -DBUILD_GMOCK=OFF \
                  -DCMAKE_BUILD_TYPE=Release \
                  -DCMAKE_CXX_STANDARD=17 \
+                 -Dabsl_DIR=$HOME/deps/abseil/lib/cmake/absl \
+                 -DProtobuf_DIR=$HOME/deps/protobuf/lib/cmake/protobuf \
+                 -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
                  -DCMAKE_INSTALL_PREFIX=$PWD/install
         make -j$(nproc)
         make install
