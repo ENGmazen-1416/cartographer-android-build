@@ -8,267 +8,281 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # ============================================
-    # Cache Android NDK
-    # ============================================
-    - name: Cache Android NDK
-      id: cache-ndk
-      uses: actions/cache@v3
-      with:
-        path: android-ndk-r25b
-        key: android-ndk-r25b-${{ runner.os }}
+      # ==================================
+      # # Cache Android NDK
+      # ==================================
+      - name: Cache Android NDK
+        id: cache-ndk
+        uses: actions/cache@v3
+        with:
+          path: android-ndk-r25b
+          key: android-ndk-r25b-${{ runner.os }}
 
-    - name: Install Android NDK
-      if: steps.cache-ndk.outputs.cache-hit != 'true'
-      run: |
-        wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-        unzip -q android-ndk-r25b-linux.zip
+      - name: Install Android NDK
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip -q android-ndk-r25b-linux.zip
+          rm android-ndk-r25b-linux.zip
+          mv android-ndk-r25b android-ndk-r25b
+          export ANDROID_NDK_HOME=$PWD/android-ndk-r25b
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
 
-    - name: Set NDK Environment
-      run: |
-        export ANDROID_NDK_HOME=$PWD/android-ndk-r25b
-        echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+      - name: Set NDK Environment
+        run: |
+          export ANDROID_NDK_HOME=$PWD/android-ndk-r25b
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
 
-    # ============================================
-    # Install System Dependencies
-    # ============================================
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake git wget unzip liblua5.3-dev
+      # ==================================
+      # # Install System Dependencies
+      # ==================================
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git wget unzip liblua5.3-dev
 
-    # ============================================
-    # Cache Abseil
-    # ============================================
-    - name: Cache Abseil
-      id: cache-abseil
-      uses: actions/cache@v3
-      with:
-        path: |
-          abseil-cpp
-          ~/deps/abseil
-        key: abseil-android-arm64-v1
+      # ==================================
+      # # Cache Abseil
+      # ==================================
+      - name: Cache Abseil
+        id: cache-abseil
+        uses: actions/cache@v3
+        with:
+          path: |
+            abseil-cpp
+            ~/deps/abseil
+          key: abseil-android-arm64-v1
 
-    - name: Download Abseil
-      if: steps.cache-abseil.outputs.cache-hit != 'true'
-      run: |
-        git clone https://github.com/abseil/abseil-cpp.git
+      - name: Download Abseil
+        if: steps.cache-abseil.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/abseil/abseil-cpp.git
 
-    - name: Build Abseil
-      if: steps.cache-abseil.outputs.cache-hit != 'true'
-      run: |
-        cd abseil-cpp
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                 -DANDROID_ABI=arm64-v8a \
-                 -DANDROID_PLATFORM=android-21 \
-                 -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_CXX_STANDARD=17 \
-                 -DCMAKE_INSTALL_PREFIX=$HOME/deps/abseil
-        make -j$(nproc)
-        make install
+      - name: Build Abseil
+        if: steps.cache-abseil.outputs.cache-hit != 'true'
+        run: |
+          cd abseil-cpp
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-21 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_INSTALL_PREFIX=$HOME/deps/abseil
+          make -j$(nproc)
+          make install
 
-    # ============================================
-    # Cache Protobuf
-    # ============================================
-    - name: Cache Protobuf
-      id: cache-protobuf
-      uses: actions/cache@v3
-      with:
-        path: |
-          protobuf
-          ~/deps/protobuf
-        key: protobuf-v3.19.0-android-arm64-v1
+      # ==================================
+      # # Cache Protobuf
+      # ==================================
+      - name: Cache Protobuf
+        id: cache-protobuf
+        uses: actions/cache@v3
+        with:
+          path: |
+            protobuf
+            ~/deps/protobuf
+          key: protobuf-v3.19.0-android-arm64-v1
 
-    - name: Download Protobuf
-      if: steps.cache-protobuf.outputs.cache-hit != 'true'
-      run: |
-        git clone https://github.com/protocolbuffers/protobuf.git
-        cd protobuf
-        git checkout v3.19.0
+      - name: Download Protobuf
+        if: steps.cache-protobuf.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/protocolbuffers/protobuf.git
+          cd protobuf
+          git checkout v3.19.0
 
-    - name: Build Protobuf
-      if: steps.cache-protobuf.outputs.cache-hit != 'true'
-      run: |
-        cd protobuf
-        mkdir -p build && cd build
-        cmake ../cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                       -DANDROID_ABI=arm64-v8a \
-                       -DANDROID_PLATFORM=android-21 \
-                       -Dprotobuf_BUILD_TESTS=OFF \
-                       -DCMAKE_BUILD_TYPE=Release \
-                       -DCMAKE_CXX_STANDARD=17 \
-                       -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf
-        make -j$(nproc)
-        make install
+      - name: Build Protobuf
+        if: steps.cache-protobuf.outputs.cache-hit != 'true'
+        run: |
+          cd protobuf
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-21 \
+            -Dprotobuf_BUILD_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf
+          make -j$(nproc)
+          make install
 
-    # ============================================
-    # Cache Eigen
-    # ============================================
-    - name: Cache Eigen
-      id: cache-eigen
-      uses: actions/cache@v3
-      with:
-        path: |
-          eigen
-          ~/deps/eigen
-        key: eigen-3.4.0-android-arm64-v1
+      # ==================================
+      # # Cache Eigen
+      # ==================================
+      - name: Cache Eigen
+        id: cache-eigen
+        uses: actions/cache@v3
+        with:
+          path: |
+            eigen
+            ~/deps/eigen
+          key: eigen-3.4.0-android-arm64-v1
 
-    - name: Download Eigen
-      if: steps.cache-eigen.outputs.cache-hit != 'true'
-      run: |
-        git clone https://gitlab.com/libeigen/eigen.git
-        cd eigen
-        git checkout 3.4.0
+      - name: Download Eigen
+        if: steps.cache-eigen.outputs.cache-hit != 'true'
+        run: |
+          git clone https://gitlab.com/libeigen/eigen.git
+          cd eigen
+          git checkout 3.4.0
 
-    - name: Build Eigen
-      if: steps.cache-eigen.outputs.cache-hit != 'true'
-      run: |
-        cd eigen
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                 -DANDROID_ABI=arm64-v8a \
-                 -DANDROID_PLATFORM=android-21 \
-                 -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_INSTALL_PREFIX=$HOME/deps/eigen
-        make install
+      - name: Build Eigen
+        if: steps.cache-eigen.outputs.cache-hit != 'true'
+        run: |
+          cd eigen
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-21 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_INSTALL_PREFIX=$HOME/deps/eigen
+          make install
 
-    # ============================================
-    # Cache Boost
-    # ============================================
-    - name: Cache Boost
-      id: cache-boost
-      uses: actions/cache@v3
-      with:
-        path: |
-          boost_1_82_0
-          ~/deps/boost
-        key: boost-1.82.0-android-arm64-v1
+      # ==================================
+      # # Cache Boost
+      # ==================================
+      - name: Cache Boost
+        id: cache-boost
+        uses: actions/cache@v3
+        with:
+          path: |
+            boost_1_82_0
+            ~/deps/boost
+          key: boost-1.82.0-android-arm64-v1
 
-    - name: Download Boost
-      if: steps.cache-boost.outputs.cache-hit != 'true'
-      run: |
-        # Use SourceForge mirror (more reliable than JFrog)
-        wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
-        tar -xzf boost_1_82_0.tar.gz
+      - name: Download Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        run: |
+          # Use SourceForge mirror (more reliable than JFrog)
+          wget https://sourceforge.net/projects/boost/files/boost/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
 
-    - name: Build Boost
-      if: steps.cache-boost.outputs.cache-hit != 'true'
-      run: |
-        cd boost_1_82_0
-        ./bootstrap.sh
-        echo "using clang : android : $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ ;" > user-config.jam
-        ./b2 --with-iostreams \
-             --with-system \
-             --with-filesystem \
-             --with-regex \
-             --user-config=user-config.jam \
-             toolset=clang-android \
-             target-os=android \
-             architecture=arm \
-             address-model=64 \
-             link=static \
-             variant=release \
-             --prefix=$HOME/deps/boost \
-             install \
-             -j$(nproc) \
-             -d0
+      - name: Build Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        run: |
+          cd boost_1_82_0
+          ./bootstrap.sh
+          echo "using clang : android : $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ ;" > user-config.jam
+          ./b2 \
+            --with-iostreams \
+            --with-system \
+            --with-filesystem \
+            --with-regex \
+            --user-config=user-config.jam \
+            toolset=clang-android \
+            target-os=android \
+            architecture=arm \
+            address-model=64 \
+            link=static \
+            variant=release \
+            --prefix=$HOME/deps/boost \
+            install \
+            -j$(nproc) \
+            -d0
 
-    # ============================================
-    # Cache Ceres Solver
-    # ============================================
-    - name: Cache Ceres
-      id: cache-ceres
-      uses: actions/cache@v3
-      with:
-        path: |
-          ceres-solver
-          ~/deps/ceres
-        key: ceres-android-arm64-v1
+      # ==================================
+      # # Cache Ceres Solver
+      # ==================================
+      - name: Cache Ceres
+        id: cache-ceres
+        uses: actions/cache@v3
+        with:
+          path: |
+            ceres-solver
+            ~/deps/ceres
+          key: ceres-android-arm64-v1
 
-    - name: Download Ceres
-      if: steps.cache-ceres.outputs.cache-hit != 'true'
-      run: |
-        git clone https://github.com/ceres-solver/ceres-solver.git
-        cd ceres-solver
-        git checkout 2.1.0
+      - name: Download Ceres
+        if: steps.cache-ceres.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/ceres-solver/ceres-solver.git
+          cd ceres-solver
+          git checkout 2.1.0
 
-    - name: Build Ceres
-      if: steps.cache-ceres.outputs.cache-hit != 'true'
-      run: |
-        cd ceres-solver
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                 -DANDROID_ABI=arm64-v8a \
-                 -DANDROID_PLATFORM=android-21 \
-                 -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_CXX_STANDARD=17 \
-                 -DBUILD_TESTING=OFF \
-                 -DBUILD_EXAMPLES=OFF \
-                 -DBUILD_BENCHMARKS=OFF \
-                 -DMINIGLOG=ON \
-                 -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
-                 -DCMAKE_INSTALL_PREFIX=$HOME/deps/ceres
-        make -j$(nproc)
-        make install
+      - name: Build Ceres
+        if: steps.cache-ceres.outputs.cache-hit != 'true'
+        run: |
+          cd ceres-solver
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-21 \
+            -DBUILD_GRPC=OFF \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_BENCHMARKS=OFF \
+            -DMINIGLOG=ON \
+            -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
+            -DCMAKE_INSTALL_PREFIX=$HOME/deps/ceres
+          make -j$(nproc)
+          make install
 
-    # ============================================
-    # Download Cartographer (always fresh)
-    # ============================================
-    - name: Download Cartographer
-      run: |
-        if [ ! -d "cartographer" ]; then
-          git clone https://github.com/cartographer-project/cartographer.git
-        else
+      # ==================================
+      # # Download Cartographer (always fresh)
+      # ==================================
+      - name: Download Cartographer
+        run: |
+          if [ ! -d "cartographer" ]; then
+            git clone https://github.com/cartographer-project/cartographer.git
+          else
+            cd cartographer
+            git pull
+            cd ..
+          fi
+
+      # ==================================
+      # # Build Cartographer
+      # ==================================
+      - name: Build Cartographer
+        run: |
           cd cartographer
-          git pull
-          cd ..
-        fi
+          # Patch CMakeLists.txt to disable testing completely
+          sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
+          # Patch to not require SuiteSparse
+          sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
+          # Patch to use Protobuf CONFIG mode
+          sed -i 's/find_package(Protobuf REQUIRED)/find_package(Protobuf REQUIRED CONFIG)/g' CMakeLists.txt
+          # Patch to disable Lua requirement (not needed for basic 2D SLAM)
+          sed -i 's/find_package(LuaGoogle REQUIRED)/#find_package(LuaGoogle REQUIRED)/g' CMakeLists.txt
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-21 \
+            -DBUILD_GRPC=OFF \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -Dabsl_DIR=$HOME/deps/abseil/lib/cmake/absl \
+            -DProtobuf_DIR=$HOME/deps/protobuf/lib/cmake/protobuf \
+            -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
+            -DCeres_DIR=$HOME/deps/ceres/lib/cmake/Ceres \
+            -DBOOST_ROOT=$HOME/deps/boost \
+            -DBoost_INCLUDE_DIR=$HOME/deps/boost/include \
+            -DBoost_LIBRARY_DIR=$HOME/deps/boost/lib \
+            -DBoost_USE_STATIC_LIBS=ON \
+            -DCMAKE_INSTALL_PREFIX=$PWD/install
+          make -j$(nproc)
+          make install
 
-    # ============================================
-    # Build Cartographer
-    # ============================================
-    - name: Build Cartographer
-      run: |
-        cd cartographer
-        # Patch CMakeLists.txt to disable testing completely
-        sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
-        # Patch to not require SuiteSparse
-        sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
-        # Patch to disable Lua requirement (not needed for basic 2D SLAM)
-        sed -i 's/find_package(LuaGoogle REQUIRED)/#find_package(LuaGoogle REQUIRED)/g' CMakeLists.txt
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                 -DANDROID_ABI=arm64-v8a \
-                 -DANDROID_PLATFORM=android-21 \
-                 -DBUILD_GRPC=OFF \
-                 -DBUILD_TESTING=OFF \
-                 -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_CXX_STANDARD=17 \
-                 -Dabsl_DIR=$HOME/deps/abseil/lib/cmake/absl \
-                 -DProtobuf_DIR=$HOME/deps/protobuf/lib/cmake/protobuf \
-                 -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
-                 -DCeres_DIR=$HOME/deps/ceres/lib/cmake/Ceres \
-                 -DBOOST_ROOT=$HOME/deps/boost \
-                 -DBoost_INCLUDE_DIR=$HOME/deps/boost/include \
-                 -DBoost_LIBRARY_DIR=$HOME/deps/boost/lib \
-                 -DBoost_USE_STATIC_LIBS=ON \
-                 -DCMAKE_INSTALL_PREFIX=$PWD/install
-        make -j$(nproc)
-        make install
+      # ==================================
+      # # Archive and Upload Artifacts
+      # ==================================
+      - name: Archive build artifacts
+        run: |
+          tar -czf cartographer-android-build.tar.gz cartographer/build
 
-    # ============================================
-    # Archive and Upload Artifacts
-    # ============================================
-    - name: Archive build artifacts
-      run: |
-        tar -czf cartographer-android-build.tar.gz cartographer/build
-
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: cartographer-android-build
-        path: cartographer-android-build.tar.gz
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cartographer-android-build
+          path: cartographer-android-build.tar.gz
