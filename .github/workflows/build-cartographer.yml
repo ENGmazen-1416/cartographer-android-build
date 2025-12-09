@@ -115,12 +115,14 @@ jobs:
         path: |
           eigen
           ~/deps/eigen
-        key: eigen-android-arm64-v1
+        key: eigen-3.4.0-android-arm64-v1
 
     - name: Download Eigen
       if: steps.cache-eigen.outputs.cache-hit != 'true'
       run: |
         git clone https://gitlab.com/libeigen/eigen.git
+        cd eigen
+        git checkout 3.4.0
 
     - name: Build Eigen
       if: steps.cache-eigen.outputs.cache-hit != 'true'
