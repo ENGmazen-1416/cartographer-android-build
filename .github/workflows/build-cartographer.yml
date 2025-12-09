@@ -11,6 +11,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Cache built dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          abseil-cpp/build/install
+          protobuf/build/install
+          eigen/build/install
+          ceres-solver/build/install
+        key: android-deps-${{ runner.os }}-${{ hashFiles('.github/workflows/build-cartographer.yml') }}
+        restore-keys: |
+          android-deps-${{ runner.os }}-
+
     - name: Install Android NDK
       run: |
         wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
@@ -30,17 +42,21 @@ jobs:
 
     - name: Build Abseil
       run: |
-        git clone https://github.com/abseil/abseil-cpp.git
-        cd abseil-cpp
-        mkdir build && cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-                 -DANDROID_ABI=arm64-v8a \
-                 -DANDROID_PLATFORM=android-21 \
-                 -DCMAKE_BUILD_TYPE=Release \
-                 -DCMAKE_CXX_STANDARD=17 \
-                 -DCMAKE_INSTALL_PREFIX=$PWD/install
-        make -j$(nproc)
-        make install
+        if [ ! -d "abseil-cpp/build/install" ]; then
+          git clone https://github.com/abseil/abseil-cpp.git
+          cd abseil-cpp
+          mkdir build && cd build
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                   -DANDROID_ABI=arm64-v8a \
+                   -DANDROID_PLATFORM=android-21 \
+                   -DCMAKE_BUILD_TYPE=Release \
+                   -DCMAKE_CXX_STANDARD=17 \
+                   -DCMAKE_INSTALL_PREFIX=$PWD/install
+          make -j$(nproc)
+          make install
+        else
+          echo "Abseil already built, skipping..."
+        fi
 
     - name: Build Protobuf
       run: |
