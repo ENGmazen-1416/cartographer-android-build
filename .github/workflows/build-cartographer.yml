@@ -82,6 +82,7 @@ jobs:
                  -DBUILD_EXAMPLES=OFF \
                  -DCMAKE_BUILD_TYPE=Release \
                  -DCMAKE_CXX_STANDARD=17 \
+                 -Dabsl_DIR=$PWD/../../abseil-cpp/build/install/lib/cmake/absl \
                  -DCMAKE_INSTALL_PREFIX=$PWD/install
         make -j$(nproc)
         make install
