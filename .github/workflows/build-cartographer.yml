@@ -1,4 +1,4 @@
-name: Build Cartographer for Android
+name: Build Cartographer for Android (Optimized)
 
 on:
   workflow_dispatch:
@@ -11,39 +11,57 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # ============================================
+    # Cache Android NDK
+    # ============================================
+    - name: Cache Android NDK
+      id: cache-ndk
+      uses: actions/cache@v3
+      with:
+        path: android-ndk-r25b
+        key: android-ndk-r25b-${{ runner.os }}
+
     - name: Install Android NDK
+      if: steps.cache-ndk.outputs.cache-hit != 'true'
       run: |
         wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
         unzip -q android-ndk-r25b-linux.zip
+
+    - name: Set NDK Environment
+      run: |
         export ANDROID_NDK_HOME=$PWD/android-ndk-r25b
         echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
 
+    # ============================================
+    # Install System Dependencies
+    # ============================================
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential cmake git wget unzip
 
-    # Cache with fixed key
-    - name: Cache dependencies
-      id: cache-deps
+    # ============================================
+    # Cache Abseil
+    # ============================================
+    - name: Cache Abseil
+      id: cache-abseil
       uses: actions/cache@v3
       with:
         path: |
-          ~/deps
-        key: android-deps-v2-${{ runner.os }}
-        restore-keys: |
-          android-deps-v2-
+          abseil-cpp
+          ~/deps/abseil
+        key: abseil-android-arm64-v1
 
-    - name: Download Cartographer
-      run: |
-        git clone https://github.com/cartographer-project/cartographer.git
-
-    - name: Build Abseil
-      if: steps.cache-deps.outputs.cache-hit != 'true'
+    - name: Download Abseil
+      if: steps.cache-abseil.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/abseil/abseil-cpp.git
+
+    - name: Build Abseil
+      if: steps.cache-abseil.outputs.cache-hit != 'true'
+      run: |
         cd abseil-cpp
-        mkdir build && cd build
+        mkdir -p build && cd build
         cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
                  -DANDROID_ABI=arm64-v8a \
                  -DANDROID_PLATFORM=android-21 \
@@ -53,13 +71,30 @@ jobs:
         make -j$(nproc)
         make install
 
-    - name: Build Protobuf
-      if: steps.cache-deps.outputs.cache-hit != 'true'
+    # ============================================
+    # Cache Protobuf
+    # ============================================
+    - name: Cache Protobuf
+      id: cache-protobuf
+      uses: actions/cache@v3
+      with:
+        path: |
+          protobuf
+          ~/deps/protobuf
+        key: protobuf-v3.19.0-android-arm64-v1
+
+    - name: Download Protobuf
+      if: steps.cache-protobuf.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/protocolbuffers/protobuf.git
         cd protobuf
         git checkout v3.19.0
-        mkdir build && cd build
+
+    - name: Build Protobuf
+      if: steps.cache-protobuf.outputs.cache-hit != 'true'
+      run: |
+        cd protobuf
+        mkdir -p build && cd build
         cmake ../cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
                        -DANDROID_ABI=arm64-v8a \
                        -DANDROID_PLATFORM=android-21 \
@@ -70,12 +105,28 @@ jobs:
         make -j$(nproc)
         make install
 
-    - name: Build Eigen
-      if: steps.cache-deps.outputs.cache-hit != 'true'
+    # ============================================
+    # Cache Eigen
+    # ============================================
+    - name: Cache Eigen
+      id: cache-eigen
+      uses: actions/cache@v3
+      with:
+        path: |
+          eigen
+          ~/deps/eigen
+        key: eigen-android-arm64-v1
+
+    - name: Download Eigen
+      if: steps.cache-eigen.outputs.cache-hit != 'true'
       run: |
         git clone https://gitlab.com/libeigen/eigen.git
+
+    - name: Build Eigen
+      if: steps.cache-eigen.outputs.cache-hit != 'true'
+      run: |
         cd eigen
-        mkdir build && cd build
+        mkdir -p build && cd build
         cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
                  -DANDROID_ABI=arm64-v8a \
                  -DANDROID_PLATFORM=android-21 \
@@ -83,22 +134,63 @@ jobs:
                  -DCMAKE_INSTALL_PREFIX=$HOME/deps/eigen
         make install
 
-    - name: Build Boost
-      if: steps.cache-deps.outputs.cache-hit != 'true'
+    # ============================================
+    # Cache Boost
+    # ============================================
+    - name: Cache Boost
+      id: cache-boost
+      uses: actions/cache@v3
+      with:
+        path: |
+          boost_1_82_0
+          ~/deps/boost
+        key: boost-1.82.0-android-arm64-v1
+
+    - name: Download Boost
+      if: steps.cache-boost.outputs.cache-hit != 'true'
       run: |
-        wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz
+        # Use SourceForge mirror (more reliable than JFrog)
+        wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
         tar -xzf boost_1_82_0.tar.gz
+
+    - name: Build Boost
+      if: steps.cache-boost.outputs.cache-hit != 'true'
+      run: |
         cd boost_1_82_0
         ./bootstrap.sh
         echo "using clang : android : $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ ;" > user-config.jam
-        ./b2 --with-iostreams --user-config=user-config.jam toolset=clang-android target-os=android architecture=arm address-model=64 --prefix=$HOME/deps/boost install -j$(nproc)
+        ./b2 --with-iostreams \
+             --user-config=user-config.jam \
+             toolset=clang-android \
+             target-os=android \
+             architecture=arm \
+             address-model=64 \
+             --prefix=$HOME/deps/boost \
+             install \
+             -j$(nproc)
 
+    # ============================================
+    # Download Cartographer (always fresh)
+    # ============================================
+    - name: Download Cartographer
+      run: |
+        if [ ! -d "cartographer" ]; then
+          git clone https://github.com/cartographer-project/cartographer.git
+        else
+          cd cartographer
+          git pull
+          cd ..
+        fi
+
+    # ============================================
+    # Build Cartographer
+    # ============================================
     - name: Build Cartographer
       run: |
         cd cartographer
         # Patch CMakeLists.txt to disable testing completely
         sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
-        mkdir build && cd build
+        mkdir -p build && cd build
         cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
                  -DANDROID_ABI=arm64-v8a \
                  -DANDROID_PLATFORM=android-21 \
@@ -115,6 +207,9 @@ jobs:
         make -j$(nproc)
         make install
 
+    # ============================================
+    # Archive and Upload Artifacts
+    # ============================================
     - name: Archive build artifacts
       run: |
         tar -czf cartographer-android-build.tar.gz cartographer/build
