@@ -83,6 +83,16 @@ jobs:
                  -DCMAKE_INSTALL_PREFIX=$HOME/deps/eigen
         make install
 
+    - name: Build Boost
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        wget https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz
+        tar -xzf boost_1_82_0.tar.gz
+        cd boost_1_82_0
+        ./bootstrap.sh
+        echo "using clang : android : $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ ;" > user-config.jam
+        ./b2 --with-iostreams --user-config=user-config.jam toolset=clang-android target-os=android architecture=arm address-model=64 --prefix=$HOME/deps/boost install -j$(nproc)
+
     - name: Build Cartographer
       run: |
         cd cartographer
@@ -99,6 +109,8 @@ jobs:
                  -Dabsl_DIR=$HOME/deps/abseil/lib/cmake/absl \
                  -DProtobuf_DIR=$HOME/deps/protobuf/lib/cmake/protobuf \
                  -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
+                 -DBOOST_ROOT=$HOME/deps/boost \
+                 -DBoost_INCLUDE_DIR=$HOME/deps/boost/include \
                  -DCMAKE_INSTALL_PREFIX=$PWD/install
         make -j$(nproc)
         make install
