@@ -86,7 +86,8 @@ jobs:
           path: |
             protobuf
             ~/deps/protobuf
-          key: protobuf-v3.19.0-android-arm64-v1
+            ~/deps/protobuf-host
+          key: protobuf-v3.19.0-android-arm64-v2
 
       - name: Download Protobuf
         if: steps.cache-protobuf.outputs.cache-hit != 'true'
@@ -95,18 +96,33 @@ jobs:
           cd protobuf
           git checkout v3.19.0
 
-      - name: Build Protobuf
+      - name: Build Protobuf (Host for protoc)
+        if: steps.cache-protobuf.outputs.cache-hit != 'true'
+        run: |
+          cd protobuf
+          mkdir -p build-host && cd build-host
+          cmake ../cmake \
+            -Dprotobuf_BUILD_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf-host
+          make -j$(nproc)
+          make install
+
+      - name: Build Protobuf (Android)
         if: steps.cache-protobuf.outputs.cache-hit != 'true'
         run: |
           cd protobuf
           mkdir -p build && cd build
-          cmake .. \
+          cmake ../cmake \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-21 \
             -Dprotobuf_BUILD_TESTS=OFF \
+            -Dprotobuf_BUILD_PROTOC_BINARIES=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_STANDARD=17 \
+            -Dprotobuf_PROTOC_EXECUTABLE=$HOME/deps/protobuf-host/bin/protoc \
             -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf
           make -j$(nproc)
           make install
