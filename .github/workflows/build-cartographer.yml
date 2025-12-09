@@ -1,0 +1,108 @@
+name: Build Cartographer for Android
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install Android NDK
+      run: |
+        wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+        unzip -q android-ndk-r25b-linux.zip
+        export ANDROID_NDK_HOME=$PWD/android-ndk-r25b
+        echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake git wget unzip
+
+    - name: Download Cartographer
+      run: |
+        git clone https://github.com/cartographer-project/cartographer.git
+        cd cartographer
+
+    - name: Build Abseil
+      run: |
+        git clone https://github.com/abseil/abseil-cpp.git
+        cd abseil-cpp
+        mkdir build && cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                 -DANDROID_ABI=arm64-v8a \
+                 -DANDROID_PLATFORM=android-21 \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_INSTALL_PREFIX=$PWD/install
+        make -j$(nproc)
+        make install
+
+    - name: Build Protobuf
+      run: |
+        git clone https://github.com/protocolbuffers/protobuf.git
+        cd protobuf
+        git checkout v3.19.0
+        mkdir build && cd build
+        cmake ../cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                       -DANDROID_ABI=arm64-v8a \
+                       -DANDROID_PLATFORM=android-21 \
+                       -Dprotobuf_BUILD_TESTS=OFF \
+                       -DCMAKE_BUILD_TYPE=Release \
+                       -DCMAKE_INSTALL_PREFIX=$PWD/install
+        make -j$(nproc)
+        make install
+
+    - name: Build Eigen
+      run: |
+        git clone https://gitlab.com/libeigen/eigen.git
+        cd eigen
+        mkdir build && cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                 -DANDROID_ABI=arm64-v8a \
+                 -DANDROID_PLATFORM=android-21 \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_INSTALL_PREFIX=$PWD/install
+        make install
+
+    - name: Build Ceres Solver
+      run: |
+        git clone https://github.com/ceres-solver/ceres-solver.git
+        cd ceres-solver
+        mkdir build && cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                 -DANDROID_ABI=arm64-v8a \
+                 -DANDROID_PLATFORM=android-21 \
+                 -DBUILD_TESTING=OFF \
+                 -DBUILD_EXAMPLES=OFF \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_INSTALL_PREFIX=$PWD/install
+        make -j$(nproc)
+        make install
+
+    - name: Build Cartographer
+      run: |
+        cd cartographer
+        mkdir build && cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+                 -DANDROID_ABI=arm64-v8a \
+                 -DANDROID_PLATFORM=android-21 \
+                 -DBUILD_GRPC=OFF \
+                 -DBUILD_TESTING=OFF \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_INSTALL_PREFIX=$PWD/install
+        make -j$(nproc)
+        make install
+
+    - name: Archive build artifacts
+      run: |
+        tar -czf cartographer-android-build.tar.gz cartographer/build
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: cartographer-android-build
+        path: cartographer-android-build.tar.gz
