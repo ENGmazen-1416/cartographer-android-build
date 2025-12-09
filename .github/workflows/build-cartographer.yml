@@ -160,14 +160,19 @@ jobs:
         ./bootstrap.sh
         echo "using clang : android : $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ ;" > user-config.jam
         ./b2 --with-iostreams \
+             --with-system \
+             --with-filesystem \
              --user-config=user-config.jam \
              toolset=clang-android \
              target-os=android \
              architecture=arm \
              address-model=64 \
+             link=static \
+             variant=release \
              --prefix=$HOME/deps/boost \
              install \
-             -j$(nproc)
+             -j$(nproc) \
+             -d0
 
     # ============================================
     # Download Cartographer (always fresh)
@@ -203,6 +208,8 @@ jobs:
                  -DEigen3_DIR=$HOME/deps/eigen/share/eigen3/cmake \
                  -DBOOST_ROOT=$HOME/deps/boost \
                  -DBoost_INCLUDE_DIR=$HOME/deps/boost/include \
+                 -DBoost_LIBRARY_DIR=$HOME/deps/boost/lib \
+                 -DBoost_USE_STATIC_LIBS=ON \
                  -DCMAKE_INSTALL_PREFIX=$PWD/install
         make -j$(nproc)
         make install
