@@ -173,7 +173,7 @@ jobs:
         if: steps.cache-boost.outputs.cache-hit != 'true'
         run: |
           # Use SourceForge mirror (more reliable than JFrog)
-          wget https://sourceforge.net/projects/boost/files/boost/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
           tar -xzf boost_1_82_0.tar.gz
 
       - name: Build Boost
