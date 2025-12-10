@@ -464,6 +464,10 @@ jobs:
           # Remove visualization-only files (not needed for core SLAM)
           rm -f cartographer/io/probability_grid_points_processor.cc cartographer/io/probability_grid_points_processor.h || true
           
+          # Remove references to deleted probability_grid_points_processor from pipeline builder
+          sed -i '/probability_grid_points_processor\.h/d' cartographer/io/points_processor_pipeline_builder.cc
+          sed -i '/ProbabilityGridPointsProcessor/d' cartographer/io/points_processor_pipeline_builder.cc
+          
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
