@@ -84,7 +84,9 @@ jobs:
             protobuf
             ~/deps/protobuf
             ~/deps/protobuf-host
-          key: protobuf-v3.19.0-android-arm64-v2
+          key: protobuf-android-arm64-stable
+          restore-keys: |
+            protobuf-android-arm64-
 
       - name: Download Protobuf
         if: steps.cache-protobuf.outputs.cache-hit != 'true'
@@ -134,7 +136,9 @@ jobs:
           path: |
             eigen
             ~/deps/eigen
-          key: eigen-3.4.0-android-arm64-v1
+          key: eigen-android-arm64-stable
+          restore-keys: |
+            eigen-android-arm64-
 
       - name: Download Eigen
         if: steps.cache-eigen.outputs.cache-hit != 'true'
@@ -167,7 +171,9 @@ jobs:
           path: |
             boost_1_82_0
             ~/deps/boost
-          key: boost-1.82.0-android-arm64-v1
+          key: boost-android-arm64-stable
+          restore-keys: |
+            boost-android-arm64-
 
       - name: Download Boost
         if: steps.cache-boost.outputs.cache-hit != 'true'
@@ -209,7 +215,9 @@ jobs:
           path: |
             ceres-solver
             ~/deps/ceres
-          key: ceres-android-arm64-v1
+          key: ceres-android-arm64-stable
+          restore-keys: |
+            ceres-android-arm64-
 
       - name: Download Ceres
         if: steps.cache-ceres.outputs.cache-hit != 'true'
@@ -249,7 +257,9 @@ jobs:
           path: |
             lua-5.3.6
             ~/deps/lua
-          key: lua-5.3.6-android-arm64-v1
+          key: lua-android-arm64-stable
+          restore-keys: |
+            lua-android-arm64-
 
       - name: Download Lua
         if: steps.cache-lua.outputs.cache-hit != 'true'
@@ -298,6 +308,8 @@ jobs:
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
           # Patch to disable Cairo requirement (not needed for Android)
           sed -i 's/PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/#PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/g' CMakeLists.txt
+          # Patch source code bug: fix missing return statement
+          sed -i '45 a\  return "";' cartographer/common/configuration_file_resolver.cc
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
