@@ -302,6 +302,54 @@ jobs:
           key: lua-v2-${{ runner.os }}
 
       # ==================================
+      # Pixman with cache/save (required for Cairo)
+      # ==================================
+      - name: Restore Pixman Cache
+        id: cache-pixman-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            pixman
+            ~/deps/pixman
+          key: pixman-v2-${{ runner.os }}
+          restore-keys: pixman-v2-
+
+      - name: Build Pixman
+        if: steps.cache-pixman-restore.outputs.cache-hit != 'true'
+        run: |
+          # Download and build Pixman from source
+          wget https://www.cairographics.org/releases/pixman-0.40.0.tar.gz
+          tar -xzf pixman-0.40.0.tar.gz
+          cd pixman-0.40.0
+          
+          # Configure for Android cross-compilation
+          ./configure \
+            --host=aarch64-linux-android \
+            --prefix=$HOME/deps/pixman \
+            --disable-shared \
+            --enable-static \
+            --disable-gtk \
+            --disable-libpng \
+            CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
+            CXX=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ \
+            AR=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
+            STRIP=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
+            RANLIB=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+          
+          make -j$(nproc)
+          make install
+          echo "✅ Pixman built!"
+
+      - name: Save Pixman Cache
+        if: steps.cache-pixman-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            pixman-0.40.0
+            ~/deps/pixman
+          key: pixman-v2-${{ runner.os }}
+
+      # ==================================
       # Cairo with cache/save
       # ==================================
       - name: Restore Cairo Cache
@@ -322,7 +370,8 @@ jobs:
           tar -xf cairo-1.16.0.tar.xz
           cd cairo-1.16.0
           
-          # Configure for Android cross-compilation (minimal build - no PNG, no external deps)
+          # Configure for Android cross-compilation (with Pixman)
+          export PKG_CONFIG_PATH=$HOME/deps/pixman/lib/pkgconfig:$PKG_CONFIG_PATH
           ./configure \
             --host=aarch64-linux-android \
             --prefix=$HOME/deps/cairo \
@@ -347,7 +396,8 @@ jobs:
             --enable-test-surfaces=no \
             --disable-tests \
             --without-x \
-            CFLAGS="-DCAIRO_NO_MUTEX=1" \
+            CFLAGS="-DCAIRO_NO_MUTEX=1 -I$HOME/deps/pixman/include/pixman-1" \
+            LDFLAGS="-L$HOME/deps/pixman/lib" \
             CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
             CXX=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ \
             AR=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
