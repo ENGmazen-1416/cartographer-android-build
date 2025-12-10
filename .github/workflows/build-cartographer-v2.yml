@@ -321,6 +321,12 @@ jobs:
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
           sed -i 's/PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/#PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/g' CMakeLists.txt
           sed -i '45 a\  return "";' cartographer/common/configuration_file_resolver.cc
+          # Remove thread safety annotations from source files
+          find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/GUARDED_BY([^)]*)//g'
+          find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/LOCKS_EXCLUDED([^)]*)//g'
+          find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/EXCLUSIVE_LOCKS_REQUIRED([^)]*)//g'
+          find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/NO_THREAD_SAFETY_ANALYSIS//g'
+          find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/LOCK_RETURNED([^)]*)//g'
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
@@ -330,7 +336,7 @@ jobs:
             -DBUILD_TESTING=OFF \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_STANDARD=17 \
-            -DCMAKE_CXX_FLAGS="-Wno-error -DGUARDED_BY(x)= -DLOCKS_EXCLUDED(x)= -DEXCLUSIVE_LOCKS_REQUIRED(x)= -DLOCK_RETURNED(x)= -DEXCLUDES(x)= -DNO_THREAD_SAFETY_ANALYSIS=" \
+            -DCMAKE_CXX_FLAGS="-Wno-error" \
             -Dabsl_DIR=$HOME/deps/abseil/lib/cmake/absl \
             -DProtobuf_DIR=$HOME/deps/protobuf/lib/cmake/protobuf \
             -DProtobuf_INCLUDE_DIR=$HOME/deps/protobuf/include \
