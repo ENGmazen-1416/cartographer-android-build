@@ -466,16 +466,11 @@ jobs:
           rm -f cartographer/io/submap_painter.cc cartographer/io/submap_painter.h || true
           
           # Remove complete registration calls (not just single lines) to avoid syntax errors
-          # Safer approach: Overwrite the pipeline builder with a dummy implementation
-          # This component is for offline asset writing, not needed for live Android SLAM
-          echo '#include "cartographer/io/points_processor_pipeline_builder.h"' > cartographer/io/points_processor_pipeline_builder.cc
-          echo '#include <vector>' >> cartographer/io/points_processor_pipeline_builder.cc
-          echo 'namespace cartographer { namespace io {' >> cartographer/io/points_processor_pipeline_builder.cc
-          echo 'PointsProcessorPipelineBuilder::PointsProcessorPipelineBuilder() {}' >> cartographer/io/points_processor_pipeline_builder.cc
-          echo 'void PointsProcessorPipelineBuilder::Register(const std::string& name, Factory factory) {}' >> cartographer/io/points_processor_pipeline_builder.cc
-          echo 'void PointsProcessorPipelineBuilder::RegisterBuiltInPointsProcessors() {}' >> cartographer/io/points_processor_pipeline_builder.cc
-          echo 'std::vector<std::unique_ptr<PointsProcessor>> PointsProcessorPipelineBuilder::CreatePipeline(common::LuaParameterDictionary* const dictionary) const { return {}; }' >> cartographer/io/points_processor_pipeline_builder.cc
-          echo '} }' >> cartographer/io/points_processor_pipeline_builder.cc
+          # Remove complete registration calls (not just single lines) to avoid syntax errors
+          # NUCLEAR OPTION: Blank out pipeline builder completely
+          # We don't need this for Android SLAM, and it's causing endless compilation grief.
+          # The valid header will allow inclusion, but the empty .cc means no implementation (link error only if used).
+          echo "// BLANKED OUT" > cartographer/io/points_processor_pipeline_builder.cc
           
           # Remove includes
           # (No longer needed since we overwrote the file)
