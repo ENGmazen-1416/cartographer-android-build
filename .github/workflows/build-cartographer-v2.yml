@@ -469,8 +469,10 @@ jobs:
             -DBoost_USE_STATIC_LIBS=ON \
             -DLUA_INCLUDE_DIR=$HOME/deps/lua/include \
             -DLUA_LIBRARIES=$HOME/deps/lua/lib/liblua.a \
+            -DCMAKE_CXX_FLAGS="-Wno-error -I$HOME/deps/cairo/include/cairo" \
+            -DCMAKE_C_FLAGS="-I$HOME/deps/cairo/include/cairo" \
             -DCAIRO_INCLUDE_DIR=$HOME/deps/cairo/include/cairo \
-            -DCAIRO_LIBRARIES=$HOME/deps/cairo/lib/libcairo.a \
+            -DCAIRO_LIBRARIES="$HOME/deps/cairo/lib/libcairo.a;$HOME/deps/pixman/lib/libpixman-1.a" \
             -DCMAKE_INSTALL_PREFIX=$PWD/install
           make -j$(nproc)
           make install
