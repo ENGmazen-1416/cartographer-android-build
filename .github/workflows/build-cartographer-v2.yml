@@ -450,6 +450,9 @@ jobs:
           find . -name "*.cc" -o -name "*.h" | xargs sed -i 's|#include.*cairo.*|// REMOVED: cairo include|g'
           # Remove draw_trajectories references (Cairo-dependent)
           rm -f cartographer/io/draw_trajectories.cc cartographer/io/draw_trajectories.h || true
+          # Blank out Cairo-dependent image I/O files instead of invalid sed
+          echo "" > cartographer/io/image.cc
+          echo "" > cartographer/io/image.h
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
