@@ -302,6 +302,65 @@ jobs:
           key: lua-v2-${{ runner.os }}
 
       # ==================================
+      # Cairo with cache/save
+      # ==================================
+      - name: Restore Cairo Cache
+        id: cache-cairo-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            cairo
+            ~/deps/cairo
+          key: cairo-v2-${{ runner.os }}
+          restore-keys: cairo-v2-
+
+      - name: Build Cairo
+        if: steps.cache-cairo-restore.outputs.cache-hit != 'true'
+        run: |
+          # Install Cairo dependencies
+          sudo apt-get install -y libpixman-1-dev libfreetype6-dev libfontconfig1-dev
+          
+          # Download and build Cairo from source
+          wget https://www.cairographics.org/releases/cairo-1.16.0.tar.xz
+          tar -xf cairo-1.16.0.tar.xz
+          cd cairo-1.16.0
+          
+          # Configure for Android cross-compilation
+          export PKG_CONFIG_PATH=$HOME/deps/pixman/lib/pkgconfig
+          ./configure \
+            --host=aarch64-linux-android \
+            --prefix=$HOME/deps/cairo \
+            --disable-shared \
+            --enable-static \
+            --disable-xlib \
+            --disable-xcb \
+            --disable-win32 \
+            --disable-ps \
+            --disable-pdf \
+            --disable-svg \
+            --disable-script \
+            --disable-ft \
+            --disable-fc \
+            CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
+            CXX=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ \
+            AR=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
+            STRIP=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
+            RANLIB=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+          
+          make -j$(nproc)
+          make install
+          echo "✅ Cairo built!"
+
+      - name: Save Cairo Cache
+        if: steps.cache-cairo-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            cairo-1.16.0
+            ~/deps/cairo
+          key: cairo-v2-${{ runner.os }}
+
+      # ==================================
       # Build Cartographer
       # ==================================
       - name: Download Cartographer
@@ -352,6 +411,8 @@ jobs:
             -DBoost_USE_STATIC_LIBS=ON \
             -DLUA_INCLUDE_DIR=$HOME/deps/lua/include \
             -DLUA_LIBRARIES=$HOME/deps/lua/lib/liblua.a \
+            -DCAIRO_INCLUDE_DIR=$HOME/deps/cairo/include/cairo \
+            -DCAIRO_LIBRARIES=$HOME/deps/cairo/lib/libcairo.a \
             -DCMAKE_INSTALL_PREFIX=$PWD/install
           make -j$(nproc)
           make install
