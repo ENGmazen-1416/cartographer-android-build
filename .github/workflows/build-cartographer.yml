@@ -240,6 +240,40 @@ jobs:
           make install
 
       # ==================================
+      # # Cache and Build Lua
+      # ==================================
+      - name: Cache Lua
+        id: cache-lua
+        uses: actions/cache@v3
+        with:
+          path: |
+            lua-5.3.6
+            ~/deps/lua
+          key: lua-5.3.6-android-arm64-v1
+
+      - name: Download Lua
+        if: steps.cache-lua.outputs.cache-hit != 'true'
+        run: |
+          wget https://www.lua.org/ftp/lua-5.3.6.tar.gz
+          tar -xzf lua-5.3.6.tar.gz
+
+      - name: Build Lua
+        if: steps.cache-lua.outputs.cache-hit != 'true'
+        run: |
+          cd lua-5.3.6
+          # Build Lua for Android
+          make linux \
+            CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang" \
+            AR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar rcu" \
+            RANLIB="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib" \
+            MYCFLAGS="-fPIC" \
+            MYLDFLAGS="-fPIC"
+          # Install headers and library
+          mkdir -p $HOME/deps/lua/include $HOME/deps/lua/lib
+          cp src/lua.h src/luaconf.h src/lualib.h src/lauxlib.h src/lua.hpp $HOME/deps/lua/include/
+          cp src/liblua.a $HOME/deps/lua/lib/
+
+      # ==================================
       # # Download Cartographer (always fresh)
       # ==================================
       - name: Download Cartographer
@@ -262,8 +296,6 @@ jobs:
           sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
           # Patch to not require SuiteSparse
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
-          # Patch to disable Lua requirement (not needed for basic 2D SLAM)
-          sed -i 's/find_package(LuaGoogle REQUIRED)/#find_package(LuaGoogle REQUIRED)/g' CMakeLists.txt
           # Patch to disable Cairo requirement (not needed for Android)
           sed -i 's/PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/#PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/g' CMakeLists.txt
           mkdir -p build && cd build
@@ -286,6 +318,8 @@ jobs:
             -DBoost_INCLUDE_DIR=$HOME/deps/boost/include \
             -DBoost_LIBRARY_DIR=$HOME/deps/boost/lib \
             -DBoost_USE_STATIC_LIBS=ON \
+            -DLUA_INCLUDE_DIR=$HOME/deps/lua/include \
+            -DLUA_LIBRARIES=$HOME/deps/lua/lib/liblua.a \
             -DCMAKE_INSTALL_PREFIX=$PWD/install
           make -j$(nproc)
           make install
