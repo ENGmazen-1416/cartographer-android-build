@@ -461,12 +461,14 @@ jobs:
           sed -i '109 i\  return {};' cartographer/io/pcd_writing_points_processor.cc
           sed -i '120 i\  return {};' cartographer/io/ply_writing_points_processor.cc
           
-          # Remove visualization-only files (not needed for core SLAM)
+          # Remove ALL Cairo-dependent visualization files (not needed for core SLAM)
           rm -f cartographer/io/probability_grid_points_processor.cc cartographer/io/probability_grid_points_processor.h || true
+          rm -f cartographer/io/submap_painter.cc cartographer/io/submap_painter.h || true
           
-          # Remove references to deleted probability_grid_points_processor from pipeline builder
+          # Remove references from pipeline builder (blank out lines that use deleted processors)
           sed -i '/probability_grid_points_processor\.h/d' cartographer/io/points_processor_pipeline_builder.cc
           sed -i '/ProbabilityGridPointsProcessor/d' cartographer/io/points_processor_pipeline_builder.cc
+          sed -i '/submap_painter\.h/d' cartographer/io/points_processor_pipeline_builder.cc
           
           mkdir -p build && cd build
           cmake .. \
