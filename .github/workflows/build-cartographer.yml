@@ -264,6 +264,8 @@ jobs:
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
           # Patch to disable Lua requirement (not needed for basic 2D SLAM)
           sed -i 's/find_package(LuaGoogle REQUIRED)/#find_package(LuaGoogle REQUIRED)/g' CMakeLists.txt
+          # Patch to disable Cairo requirement (not needed for Android)
+          sed -i 's/PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/#PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/g' CMakeLists.txt
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
