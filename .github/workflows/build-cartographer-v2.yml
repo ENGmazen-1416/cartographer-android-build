@@ -446,6 +446,10 @@ jobs:
           find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/EXCLUSIVE_LOCKS_REQUIRED([^)]*)//g'
           find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/NO_THREAD_SAFETY_ANALYSIS//g'
           find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/LOCK_RETURNED([^)]*)//g'
+          # Remove Cairo includes and disable Cairo-dependent source files
+          find . -name "*.cc" -o -name "*.h" | xargs sed -i 's|#include.*cairo.*|// REMOVED: cairo include|g'
+          # Remove draw_trajectories references (Cairo-dependent)
+          rm -f cartographer/io/draw_trajectories.cc cartographer/io/draw_trajectories.h || true
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
