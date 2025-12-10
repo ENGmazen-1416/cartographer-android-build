@@ -261,8 +261,8 @@ jobs:
         if: steps.cache-lua.outputs.cache-hit != 'true'
         run: |
           cd lua-5.3.6
-          # Build Lua for Android
-          make linux \
+          # Build Lua for Android (generic target, no readline)
+          make generic \
             CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang" \
             AR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar rcu" \
             RANLIB="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib" \
