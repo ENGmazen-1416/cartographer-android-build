@@ -465,9 +465,11 @@ jobs:
           rm -f cartographer/io/probability_grid_points_processor.cc cartographer/io/probability_grid_points_processor.h || true
           rm -f cartographer/io/submap_painter.cc cartographer/io/submap_painter.h || true
           
-          # Remove references from pipeline builder (blank out lines that use deleted processors)
+          # Remove complete registration calls (not just single lines) to avoid syntax errors
+          # Remove the entire RegisterFileWritingPointsProcessorWithTrajectories<ProbabilityGridPointsProcessor> block
+          sed -i '/RegisterFileWritingPointsProcessorWithTrajectories<$/,/builder);$/{ /ProbabilityGridPointsProcessor/,/builder);$/d; }' cartographer/io/points_processor_pipeline_builder.cc || true
+          # Remove includes
           sed -i '/probability_grid_points_processor\.h/d' cartographer/io/points_processor_pipeline_builder.cc
-          sed -i '/ProbabilityGridPointsProcessor/d' cartographer/io/points_processor_pipeline_builder.cc
           sed -i '/submap_painter\.h/d' cartographer/io/points_processor_pipeline_builder.cc
           
           mkdir -p build && cd build
