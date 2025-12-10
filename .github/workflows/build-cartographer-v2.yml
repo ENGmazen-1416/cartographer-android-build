@@ -321,6 +321,8 @@ jobs:
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
           sed -i 's/PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/#PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/g' CMakeLists.txt
           sed -i '45 a\  return "";' cartographer/common/configuration_file_resolver.cc
+          # Fix lambda return in lua_parameter_dictionary.cc (line 332)
+          sed -i '332 a\    return 0;' cartographer/common/lua_parameter_dictionary.cc
           # Remove thread safety annotations from source files
           find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/GUARDED_BY([^)]*)//g'
           find . -name "*.h" -o -name "*.cc" | xargs sed -i 's/LOCKS_EXCLUDED([^)]*)//g'
