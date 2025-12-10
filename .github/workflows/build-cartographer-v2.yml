@@ -464,8 +464,11 @@ jobs:
           # Remove ALL Cairo-dependent visualization files (not needed for core SLAM)
           rm -f cartographer/io/probability_grid_points_processor.cc cartographer/io/probability_grid_points_processor.h || true
           rm -f cartographer/io/submap_painter.cc cartographer/io/submap_painter.h || true
+          rm -f cartographer/io/xray_points_processor.cc cartographer/io/xray_points_processor.h || true
           
-          # Remove complete registration calls (not just single lines) to avoid syntax errors
+          # Fix XYZ writer return type error (insert before closing brace)
+          sed -i '48 i\  return {};' cartographer/io/xyz_writing_points_processor.cc || true
+          
           # Remove complete registration calls (not just single lines) to avoid syntax errors
           # NUCLEAR OPTION: Blank out pipeline builder completely
           # We don't need this for Android SLAM, and it's causing endless compilation grief.
