@@ -474,7 +474,7 @@ jobs:
           # Better approach: Blank out the file content if it's only for tools?
           # probability_grid_points_processor.cc seems to be for the points processing pipeline.
           # Let's try to comment out lines containing "image->" or "cairo"
-          sed -i 's/.*image->.*//g' cartographer/io/probability_grid_points_processor.cc
+          sed -i 's/.*image-\>.*//g' cartographer/io/probability_grid_points_processor.cc
           sed -i 's/.*cairo.*//g' cartographer/io/probability_grid_points_processor.cc
           
           mkdir -p build && cd build
