@@ -450,14 +450,19 @@ jobs:
           find . -name "*.cc" -o -name "*.h" | xargs sed -i 's|#include.*cairo.*|// REMOVED: cairo include|g'
           # Remove draw_trajectories references (Cairo-dependent)
           rm -f cartographer/io/draw_trajectories.cc cartographer/io/draw_trajectories.h || true
-          # Blank out Cairo-dependent image I/O files instead of invalid sed
+          # Blank out Cairo-dependent image I/O files (keep minimal dummy class for compilation)
+          echo "namespace cartographer { namespace io { class Image {}; } }" > cartographer/io/image.h
           echo "" > cartographer/io/image.cc
-          echo "" > cartographer/io/image.h
+          
           # Blank out files interacting with GFlags (CLI tools not needed for Android)
           grep -lR "gflags/gflags.h" cartographer | xargs -I {} sh -c 'echo "" > {}'
+          
           # Fix return type errors in IO processors (insert BEFORE closing brace)
           sed -i '109 i\  return {};' cartographer/io/pcd_writing_points_processor.cc
           sed -i '120 i\  return {};' cartographer/io/ply_writing_points_processor.cc
+          
+          # Remove include of deleted draw_trajectories.h from probability_grid_points_processor.cc
+          sed -i 's|#include "cartographer/io/draw_trajectories.h"|// REMOVED: draw_trajectories|g' cartographer/io/probability_grid_points_processor.cc
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
