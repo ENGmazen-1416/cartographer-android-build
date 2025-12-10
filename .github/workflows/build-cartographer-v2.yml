@@ -463,6 +463,20 @@ jobs:
           
           # Remove include of deleted draw_trajectories.h from probability_grid_points_processor.cc
           sed -i 's|#include "cartographer/io/draw_trajectories.h"|// REMOVED: draw_trajectories|g' cartographer/io/probability_grid_points_processor.cc
+          
+          # Remove Cairo/Image usage from probability_grid_points_processor.cc
+          # Remove DrawProbabilityGrid function calls and definition
+          sed -i 's/std::unique_ptr<Image> DrawProbabilityGrid/void DrawProbabilityGrid_DISABLED/g' cartographer/io/probability_grid_points_processor.cc
+          sed -i 's/DrawProbabilityGrid(probability_grid, &image)/// DrawProbabilityGrid(probability_grid, &image)/g' cartographer/io/probability_grid_points_processor.cc
+          
+          # Comment out the body of DrawProbabilityGrid to avoid "unknown type" errors inside it
+          # This is a bit aggressive but necessary since we can't parse C++ with sed easily.
+          # Better approach: Blank out the file content if it's only for tools?
+          # probability_grid_points_processor.cc seems to be for the points processing pipeline.
+          # Let's try to comment out lines containing "image->" or "cairo"
+          sed -i 's/.*image->.*//g' cartographer/io/probability_grid_points_processor.cc
+          sed -i 's/.*cairo.*//g' cartographer/io/probability_grid_points_processor.cc
+          
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
