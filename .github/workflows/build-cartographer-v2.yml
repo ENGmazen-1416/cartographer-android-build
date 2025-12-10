@@ -1,4 +1,4 @@
-name: Build Cartographer for Android (Optimized)
+name: Build Cartographer for Android (Cache Save Strategy)
 
 on:
   workflow_dispatch:
@@ -33,16 +33,13 @@ jobs:
           export ANDROID_NDK_HOME=$PWD/android-ndk-r25b
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
 
-      # ==================================
-      # # Install System Dependencies
-      # ==================================
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake git wget unzip liblua5.3-dev
+          sudo apt-get install -y build-essential cmake git wget unzip
 
       # ==================================
-      # # Cache Abseil
+      # Abseil with cache/save
       # ==================================
       - name: Restore Abseil Cache
         id: cache-abseil-restore
@@ -51,18 +48,13 @@ jobs:
           path: |
             abseil-cpp
             ~/deps/abseil
-          key: abseil-android-arm64-stable
-          restore-keys: |
-            abseil-android-arm64-
-
-      - name: Download Abseil
-        if: steps.cache-abseil-restore.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/abseil/abseil-cpp.git
+          key: abseil-v2-${{ runner.os }}
+          restore-keys: abseil-v2-
 
       - name: Build Abseil
         if: steps.cache-abseil-restore.outputs.cache-hit != 'true'
         run: |
+          git clone https://github.com/abseil/abseil-cpp.git
           cd abseil-cpp
           mkdir -p build && cd build
           cmake .. \
@@ -74,6 +66,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$HOME/deps/abseil
           make -j$(nproc)
           make install
+          echo "✅ Abseil built!"
 
       - name: Save Abseil Cache
         if: steps.cache-abseil-restore.outputs.cache-hit != 'true'
@@ -82,47 +75,35 @@ jobs:
           path: |
             abseil-cpp
             ~/deps/abseil
-          key: abseil-android-arm64-stable
+          key: abseil-v2-${{ runner.os }}
 
       # ==================================
-      # # Cache Protobuf
+      # Protobuf with cache/save
       # ==================================
-      - name: Cache Protobuf
-        id: cache-protobuf
-        uses: actions/cache@v3
+      - name: Restore Protobuf Cache  
+        id: cache-protobuf-restore
+        uses: actions/cache/restore@v3
         with:
           path: |
             protobuf
             ~/deps/protobuf
             ~/deps/protobuf-host
-          key: protobuf-android-arm64-stable
-          restore-keys: |
-            protobuf-android-arm64-
+          key: protobuf-v2-${{ runner.os }}
+          restore-keys: protobuf-v2-
 
-      - name: Download Protobuf
-        if: steps.cache-protobuf.outputs.cache-hit != 'true'
+      - name: Build Protobuf
+        if: steps.cache-protobuf-restore.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/protocolbuffers/protobuf.git
           cd protobuf
           git checkout v3.19.0
-
-      - name: Build Protobuf (Host for protoc)
-        if: steps.cache-protobuf.outputs.cache-hit != 'true'
-        run: |
-          cd protobuf
+          # Host build for protoc
           mkdir -p build-host && cd build-host
-          cmake ../cmake \
-            -Dprotobuf_BUILD_TESTS=OFF \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_STANDARD=17 \
-            -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf-host
+          cmake ../cmake -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf-host
           make -j$(nproc)
           make install
-
-      - name: Build Protobuf (Android)
-        if: steps.cache-protobuf.outputs.cache-hit != 'true'
-        run: |
-          cd protobuf
+          cd ..
+          # Android build
           mkdir -p build && cd build
           cmake ../cmake \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
@@ -136,32 +117,37 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$HOME/deps/protobuf
           make -j$(nproc)
           make install
+          echo "✅ Protobuf built!"
+
+      - name: Save Protobuf Cache
+        if: steps.cache-protobuf-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            protobuf
+            ~/deps/protobuf
+            ~/deps/protobuf-host
+          key: protobuf-v2-${{ runner.os }}
 
       # ==================================
-      # # Cache Eigen
+      # Eigen with cache/save
       # ==================================
-      - name: Cache Eigen
-        id: cache-eigen
-        uses: actions/cache@v3
+      - name: Restore Eigen Cache
+        id: cache-eigen-restore
+        uses: actions/cache/restore@v3
         with:
           path: |
             eigen
             ~/deps/eigen
-          key: eigen-android-arm64-stable
-          restore-keys: |
-            eigen-android-arm64-
+          key: eigen-v2-${{ runner.os }}
+          restore-keys: eigen-v2-
 
-      - name: Download Eigen
-        if: steps.cache-eigen.outputs.cache-hit != 'true'
+      - name: Build Eigen
+        if: steps.cache-eigen-restore.outputs.cache-hit != 'true'
         run: |
           git clone https://gitlab.com/libeigen/eigen.git
           cd eigen
           git checkout 3.4.0
-
-      - name: Build Eigen
-        if: steps.cache-eigen.outputs.cache-hit != 'true'
-        run: |
-          cd eigen
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
@@ -171,31 +157,35 @@ jobs:
             -DCMAKE_CXX_STANDARD=17 \
             -DCMAKE_INSTALL_PREFIX=$HOME/deps/eigen
           make install
+          echo "✅ Eigen built!"
+
+      - name: Save Eigen Cache
+        if: steps.cache-eigen-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            eigen
+            ~/deps/eigen
+          key: eigen-v2-${{ runner.os }}
 
       # ==================================
-      # # Cache Boost
+      # Boost with cache/save
       # ==================================
-      - name: Cache Boost
-        id: cache-boost
-        uses: actions/cache@v3
+      - name: Restore Boost Cache
+        id: cache-boost-restore
+        uses: actions/cache/restore@v3
         with:
           path: |
             boost_1_82_0
             ~/deps/boost
-          key: boost-android-arm64-stable
-          restore-keys: |
-            boost-android-arm64-
-
-      - name: Download Boost
-        if: steps.cache-boost.outputs.cache-hit != 'true'
-        run: |
-          # Use SourceForge mirror (more reliable than JFrog)
-          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
-          tar -xzf boost_1_82_0.tar.gz
+          key: boost-v2-${{ runner.os }}
+          restore-keys: boost-v2-
 
       - name: Build Boost
-        if: steps.cache-boost.outputs.cache-hit != 'true'
+        if: steps.cache-boost-restore.outputs.cache-hit != 'true'
         run: |
+          wget https://sourceforge.net/projects/boost/files/boost/1.82.0/boost_1_82_0.tar.gz/download -O boost_1_82_0.tar.gz
+          tar -xzf boost_1_82_0.tar.gz
           cd boost_1_82_0
           ./bootstrap.sh
           echo "using clang : android : $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ ;" > user-config.jam
@@ -215,32 +205,36 @@ jobs:
             install \
             -j$(nproc) \
             -d0
+          echo "✅ Boost built!"
+
+      - name: Save Boost Cache
+        if: steps.cache-boost-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            boost_1_82_0
+            ~/deps/boost
+          key: boost-v2-${{ runner.os }}
 
       # ==================================
-      # # Cache Ceres Solver
+      # Ceres with cache/save
       # ==================================
-      - name: Cache Ceres
-        id: cache-ceres
-        uses: actions/cache@v3
+      - name: Restore Ceres Cache
+        id: cache-ceres-restore
+        uses: actions/cache/restore@v3
         with:
           path: |
             ceres-solver
             ~/deps/ceres
-          key: ceres-android-arm64-stable
-          restore-keys: |
-            ceres-android-arm64-
+          key: ceres-v2-${{ runner.os }}
+          restore-keys: ceres-v2-
 
-      - name: Download Ceres
-        if: steps.cache-ceres.outputs.cache-hit != 'true'
+      - name: Build Ceres
+        if: steps.cache-ceres-restore.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/ceres-solver/ceres-solver.git
           cd ceres-solver
           git checkout 2.1.0
-
-      - name: Build Ceres
-        if: steps.cache-ceres.outputs.cache-hit != 'true'
-        run: |
-          cd ceres-solver
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
@@ -257,45 +251,58 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$HOME/deps/ceres
           make -j$(nproc)
           make install
+          echo "✅ Ceres built!"
+
+      - name: Save Ceres Cache
+        if: steps.cache-ceres-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ceres-solver
+            ~/deps/ceres
+          key: ceres-v2-${{ runner.os }}
 
       # ==================================
-      # # Cache and Build Lua
+      # Lua with cache/save
       # ==================================
-      - name: Cache Lua
-        id: cache-lua
-        uses: actions/cache@v3
+      - name: Restore Lua Cache
+        id: cache-lua-restore
+        uses: actions/cache/restore@v3
         with:
           path: |
             lua-5.3.6
             ~/deps/lua
-          key: lua-android-arm64-stable
-          restore-keys: |
-            lua-android-arm64-
+          key: lua-v2-${{ runner.os }}
+          restore-keys: lua-v2-
 
-      - name: Download Lua
-        if: steps.cache-lua.outputs.cache-hit != 'true'
+      - name: Build Lua
+        if: steps.cache-lua-restore.outputs.cache-hit != 'true'
         run: |
           wget https://www.lua.org/ftp/lua-5.3.6.tar.gz
           tar -xzf lua-5.3.6.tar.gz
-
-      - name: Build Lua
-        if: steps.cache-lua.outputs.cache-hit != 'true'
-        run: |
           cd lua-5.3.6
-          # Build Lua for Android (generic target, no readline)
           make generic \
             CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang" \
             AR="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar rcu" \
             RANLIB="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib" \
             MYCFLAGS="-fPIC" \
             MYLDFLAGS="-fPIC"
-          # Install headers and library
           mkdir -p $HOME/deps/lua/include $HOME/deps/lua/lib
           cp src/lua.h src/luaconf.h src/lualib.h src/lauxlib.h src/lua.hpp $HOME/deps/lua/include/
           cp src/liblua.a $HOME/deps/lua/lib/
+          echo "✅ Lua built!"
+
+      - name: Save Lua Cache
+        if: steps.cache-lua-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            lua-5.3.6
+            ~/deps/lua
+          key: lua-v2-${{ runner.os }}
 
       # ==================================
-      # # Download Cartographer (always fresh)
+      # Build Cartographer
       # ==================================
       - name: Download Cartographer
         run: |
@@ -307,19 +314,12 @@ jobs:
             cd ..
           fi
 
-      # ==================================
-      # # Build Cartographer
-      # ==================================
       - name: Build Cartographer
         run: |
           cd cartographer
-          # Patch CMakeLists.txt to disable testing completely
           sed -i 's/google_enable_testing()/#google_enable_testing()/g' CMakeLists.txt
-          # Patch to not require SuiteSparse
           sed -i 's/find_package(Ceres REQUIRED COMPONENTS SuiteSparse)/find_package(Ceres REQUIRED)/g' CMakeLists.txt
-          # Patch to disable Cairo requirement (not needed for Android)
           sed -i 's/PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/#PKG_SEARCH_MODULE(CAIRO REQUIRED cairo>=1.12.16)/g' CMakeLists.txt
-          # Patch source code bug: fix missing return statement
           sed -i '45 a\  return "";' cartographer/common/configuration_file_resolver.cc
           mkdir -p build && cd build
           cmake .. \
@@ -348,9 +348,6 @@ jobs:
           make -j$(nproc)
           make install
 
-      # ==================================
-      # # Archive and Upload Artifacts
-      # ==================================
       - name: Archive build artifacts
         run: |
           tar -czf cartographer-android-build.tar.gz cartographer/build
