@@ -455,9 +455,9 @@ jobs:
           echo "" > cartographer/io/image.h
           # Blank out files interacting with GFlags (CLI tools not needed for Android)
           grep -lR "gflags/gflags.h" cartographer | xargs -I {} sh -c 'echo "" > {}'
-          # Fix return type errors in IO processors
-          sed -i '109 a\  return {};' cartographer/io/pcd_writing_points_processor.cc
-          sed -i '120 a\  return {};' cartographer/io/ply_writing_points_processor.cc
+          # Fix return type errors in IO processors (insert BEFORE closing brace)
+          sed -i '109 i\  return {};' cartographer/io/pcd_writing_points_processor.cc
+          sed -i '120 i\  return {};' cartographer/io/ply_writing_points_processor.cc
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
