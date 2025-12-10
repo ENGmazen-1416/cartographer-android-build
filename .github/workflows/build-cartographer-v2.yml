@@ -322,7 +322,7 @@ jobs:
           tar -xf cairo-1.16.0.tar.xz
           cd cairo-1.16.0
           
-          # Configure for Android cross-compilation (minimal build)
+          # Configure for Android cross-compilation (minimal build - no PNG, no external deps)
           ./configure \
             --host=aarch64-linux-android \
             --prefix=$HOME/deps/cairo \
@@ -337,6 +337,7 @@ jobs:
             --disable-script \
             --disable-ft \
             --disable-fc \
+            --disable-png \
             --disable-gobject \
             --disable-gtk-doc \
             --disable-gtk-doc-html \
@@ -345,6 +346,8 @@ jobs:
             --disable-test-surfaces \
             --enable-test-surfaces=no \
             --disable-tests \
+            --without-x \
+            CFLAGS="-DCAIRO_NO_MUTEX=1" \
             CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
             CXX=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++ \
             AR=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
