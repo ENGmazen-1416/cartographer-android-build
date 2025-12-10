@@ -453,6 +453,8 @@ jobs:
           # Blank out Cairo-dependent image I/O files instead of invalid sed
           echo "" > cartographer/io/image.cc
           echo "" > cartographer/io/image.h
+          # Blank out files interacting with GFlags (CLI tools not needed for Android)
+          grep -lR "gflags/gflags.h" cartographer | xargs -I {} sh -c 'echo "" > {}'
           mkdir -p build && cd build
           cmake .. \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
