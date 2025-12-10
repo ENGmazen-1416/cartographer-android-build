@@ -461,21 +461,8 @@ jobs:
           sed -i '109 i\  return {};' cartographer/io/pcd_writing_points_processor.cc
           sed -i '120 i\  return {};' cartographer/io/ply_writing_points_processor.cc
           
-          # Remove include of deleted draw_trajectories.h from probability_grid_points_processor.cc
-          sed -i 's|#include "cartographer/io/draw_trajectories.h"|// REMOVED: draw_trajectories|g' cartographer/io/probability_grid_points_processor.cc
-          
-          # Remove Cairo/Image usage from probability_grid_points_processor.cc
-          # Remove DrawProbabilityGrid function calls and definition
-          sed -i 's/std::unique_ptr<Image> DrawProbabilityGrid/void DrawProbabilityGrid_DISABLED/g' cartographer/io/probability_grid_points_processor.cc
-          sed -i 's/DrawProbabilityGrid(probability_grid, &image)/// DrawProbabilityGrid(probability_grid, &image)/g' cartographer/io/probability_grid_points_processor.cc
-          
-          # Comment out the body of DrawProbabilityGrid to avoid "unknown type" errors inside it
-          # This is a bit aggressive but necessary since we can't parse C++ with sed easily.
-          # Better approach: Blank out the file content if it's only for tools?
-          # probability_grid_points_processor.cc seems to be for the points processing pipeline.
-          # Let's try to comment out lines containing "image->" or "cairo"
-          sed -i 's/.*image-\>.*//g' cartographer/io/probability_grid_points_processor.cc
-          sed -i 's/.*cairo.*//g' cartographer/io/probability_grid_points_processor.cc
+          # Remove visualization-only files (not needed for core SLAM)
+          rm -f cartographer/io/probability_grid_points_processor.cc cartographer/io/probability_grid_points_processor.h || true
           
           mkdir -p build && cd build
           cmake .. \
