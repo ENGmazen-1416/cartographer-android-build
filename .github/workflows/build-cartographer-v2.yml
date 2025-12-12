@@ -473,6 +473,11 @@ jobs:
           # Lines 190 and 222 (approximate based on error log)
           sed -i '190 i\  return {};' cartographer/mapping/2d/submap_2d.cc || true
           sed -i '223 i\  return {};' cartographer/mapping/2d/submap_2d.cc || true
+
+          # Fix LOG_IF_EVERY_N undefined error (Glog macro missing on Android?)
+          # Just comment out these INFO logs
+          sed -i 's/LOG_IF_EVERY_N/\/\/ LOG_IF_EVERY_N/g' cartographer/mapping/internal/imu_based_pose_extrapolator.cc || true
+          sed -i 's/LOG_IF_EVERY_N/\/\/ LOG_IF_EVERY_N/g' cartographer/mapping/internal/motion_filter.cc || true
           
           # Maintain dummy pipeline builder (as it's referenced by other parts maybe, but content is blank)
           echo "// BLANKED OUT" > cartographer/io/points_processor_pipeline_builder.cc
