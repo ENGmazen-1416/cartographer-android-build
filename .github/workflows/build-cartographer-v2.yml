@@ -464,6 +464,7 @@ jobs:
           # NUCLEAR OPTION: Remove ALL Points Processors (Offline tools not needed for Android)
           # This cleans up ~20 files causing 90% of current build errors (PCD, PLY, XYZ, Coloring, etc.)
           rm -f cartographer/io/*_points_processor.cc cartographer/io/*_points_processor.h || true
+          rm -f cartographer/io/submap_painter.cc cartographer/io/submap_painter.h || true
           
           # Fix XYZ writer return type error (No longer needed, file deleted above)
           # sed -i '48 i\  return {};' cartographer/io/xyz_writing_points_processor.cc || true
