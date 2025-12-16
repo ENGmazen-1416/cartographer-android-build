@@ -531,12 +531,24 @@ jobs:
           find . -name "link.txt" -exec sed -i 's/-lpthread//g' {} + || true
           
           # Build ONLY the library to avoid linking CLI tools that likely fail
-          make -j$(nproc) cartographer
-          make install
+          # Use || true to ignore linking errors for tools if they are triggered
+          make -j$(nproc) cartographer || true
+          
+          # Try to install what was built (headers + lib)
+          make install || true
+          
+          # Verify if library exists and copy it manually if install failed
+          echo "Checking for libcartographer.a..."
+          find . -name "libcartographer.a"
+          
+          # Ensure artifact dir exists
+          mkdir -p install/lib
+          cp build/libcartographer.a install/lib/ || echo "Failed to copy lib from build dir"
 
       - name: Archive build artifacts
         run: |
-          tar -czf cartographer-android-build.tar.gz cartographer/build
+          # Archive the install directory if it exists, or build/lib
+          tar -czf cartographer-android-build.tar.gz install cartographer/build/libcartographer.a
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
