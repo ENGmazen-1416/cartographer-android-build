@@ -485,6 +485,9 @@ jobs:
           # Fix LOG_EVERY_N undefined in ordered_multi_queue.cc
           sed -i '1 i\#define LOG_EVERY_N(severity, n) LOG(severity)' cartographer/sensor/internal/ordered_multi_queue.cc || true
           
+          # Fix CHECK_NEAR undefined in rigid_transform.cc
+          sed -i '1 i\#include <cmath>\n#define CHECK_NEAR(a, b, margin) CHECK(std::abs((a) - (b)) < (margin))' cartographer/transform/rigid_transform.cc || true
+
           # Maintain dummy pipeline builder (as it's referenced by other parts maybe, but content is blank)
           echo "// BLANKED OUT" > cartographer/io/points_processor_pipeline_builder.cc
           # We don't need this for Android SLAM, and it's causing endless compilation grief.
