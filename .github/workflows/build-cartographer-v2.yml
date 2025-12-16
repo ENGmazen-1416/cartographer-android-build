@@ -475,9 +475,9 @@ jobs:
           sed -i '223 i\  return {};' cartographer/mapping/2d/submap_2d.cc || true
 
           # Fix LOG_IF_EVERY_N undefined error (Glog macro missing on Android?)
-          # Delete the entire statement (from MACRO to semicolon) to handle multi-line logs safely
-          sed -i '/LOG_IF_EVERY_N/,/;/d' cartographer/mapping/internal/imu_based_pose_extrapolator.cc || true
-          sed -i '/LOG_IF_EVERY_N/,/;/d' cartographer/mapping/internal/motion_filter.cc || true
+          # SAFE FIX: Inject macro definition at the top of the file to map it to LOG_IF
+          sed -i '1 i\#define LOG_IF_EVERY_N(severity, condition, n) LOG_IF(severity, condition)' cartographer/mapping/internal/imu_based_pose_extrapolator.cc || true
+          sed -i '1 i\#define LOG_IF_EVERY_N(severity, condition, n) LOG_IF(severity, condition)' cartographer/mapping/internal/motion_filter.cc || true
           
           # Maintain dummy pipeline builder (as it's referenced by other parts maybe, but content is blank)
           echo "// BLANKED OUT" > cartographer/io/points_processor_pipeline_builder.cc
