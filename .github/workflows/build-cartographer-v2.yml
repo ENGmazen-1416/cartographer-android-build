@@ -525,7 +525,13 @@ jobs:
             -DCAIRO_INCLUDE_DIR=$HOME/deps/cairo/include/cairo \
             -DCAIRO_LIBRARIES="$HOME/deps/cairo/lib/libcairo.a;$HOME/deps/pixman/lib/libpixman-1.a" \
             -DCMAKE_INSTALL_PREFIX=$PWD/install
-          make -j$(nproc)
+          
+          # Hack: Android 'libc' includes pthread, so explicit '-lpthread' causes linker errors.
+          # Strip it from generated link commands.
+          find . -name "link.txt" -exec sed -i 's/-lpthread//g' {} + || true
+          
+          # Build ONLY the library to avoid linking CLI tools that likely fail
+          make -j$(nproc) cartographer
           make install
 
       - name: Archive build artifacts
